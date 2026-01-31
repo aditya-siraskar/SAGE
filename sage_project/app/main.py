@@ -4,116 +4,222 @@ import plotly.express as px
 import os
 import sys
 
-# Add project root to path so we can import our agents
+# --- PATH SETUP ---
+# Adds project root to python path so we can import the agent logic
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 from sage_project.agent.skills.pdf_extractor.extract import PDFExtractor
 from sage_project.agent.skills.satellite_fetcher.fetch_logic import SatelliteFetcher
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="SAGE | Greenwashing Detector", layout="wide")
+# --- 1. PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="SAGE | Geo-Audit",
+    page_icon="🛰️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-st.title("🛰️ SAGE: Satellite Analysis for Greenwashing Evaluation")
+# --- 2. VISUAL STYLING (CSS) ---
 st.markdown("""
-**Upload a Corporate Sustainability Report (PDF)** to automatically audit their environmental claims using real-time satellite data.
-""")
+<style>
+    /* Dark Theme Background */
+    .stApp {
+        background-color: #0E1117;
+    }
+    
+    /* 1. HEADER GRADIENT */
+    .header-container {
+        padding: 3rem 2rem;
+        border-radius: 15px;
+        background: linear-gradient(120deg, #4f46e5, #0ea5e9);
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .header-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -2px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .header-subtitle {
+        font-size: 1.2rem;
+        font-weight: 300;
+        opacity: 0.9;
+        margin-top: 0.5rem;
+    }
 
-# --- SIDEBAR ---
+    /* 2. METRIC CARDS */
+    div[data-testid="stMetric"] {
+        background-color: #1a1c24;
+        border: 1px solid #2d3748;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #a0aec0;
+        font-size: 0.9rem;
+    }
+    div[data-testid="stMetricValue"] {
+        color: white;
+        font-size: 2rem;
+    }
+
+    /* 3. VERDICT BADGES (For the table) */
+    .positive-badge { color: #4ade80; font-weight: bold; }
+    .negative-badge { color: #f87171; font-weight: bold; }
+    .neutral-badge { color: #94a3b8; font-weight: bold; }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 3. SIDEBAR (CONTROLS) ---
 with st.sidebar:
     st.header("⚙️ Configuration")
-    uploaded_file = st.file_uploader("Upload Report", type=["pdf"])
     
-    # Date Selection
+    # Simple, clear headings as requested
+    st.markdown("### 1. Upload Report")
+    uploaded_file = st.file_uploader("Drop PDF here", type=["pdf"], label_visibility="collapsed")
+    
+    st.markdown("### 2. Set Timeline")
     col1, col2 = st.columns(2)
-    start_year = col1.number_input("Baseline Year", value=2022)
-    end_year = col2.number_input("Audit Year", value=2023)
+    start_year = col1.number_input("Baseline", value=2022, step=1)
+    end_year = col2.number_input("Target", value=2023, step=1)
     
-    run_btn = st.button("🚀 Run Audit")
+    st.markdown("---")
+    run_btn = st.button("🚀 Run Analysis", type="primary", use_container_width=True)
 
-# --- MAIN LOGIC ---
-if run_btn and uploaded_file:
-    # 1. Save uploaded file temporarily
+# --- 4. MAIN SCREEN LOGIC ---
+
+# HEADER SECTION (Always Visible)
+st.markdown("""
+    <div class="header-container">
+        <div class="header-title">SAGE</div>
+        <div class="header-subtitle">Satellite-Verified Environmental Intelligence</div>
+    </div>
+""", unsafe_allow_html=True)
+
+# MAIN CONTENT
+if not uploaded_file:
+    # Empty State - Clean instruction
+    st.info("👈 Please upload a PDF report in the sidebar to begin the audit.")
+
+elif run_btn and uploaded_file:
+    
+    # A. INITIALIZATION
+    progress_bar = st.progress(0, text="Initializing SAGE Agents...")
+    
+    # Save file
     temp_path = f"sage_project/data/temp/{uploaded_file.name}"
     os.makedirs("sage_project/data/temp", exist_ok=True)
     with open(temp_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
-    
-    # 2. Initialize Agents
+
+    # Load Agents
     nlp_agent = PDFExtractor()
     sat_agent = SatelliteFetcher()
     
-    with st.status("🔍 analyzing document text...", expanded=True) as status:
-        st.write("Extracting claims and geocoding locations...")
-        claims = nlp_agent.extract_claims(temp_path)
+    # B. NLP PHASE
+    claims = nlp_agent.extract_claims(temp_path)
+    if not claims:
+        progress_bar.empty()
+        st.error("❌ No verifiable locations found in this document.")
+        st.stop()
         
-        if not claims:
-            status.update(label="❌ No verifiable locations found.", state="error")
-            st.stop()
-            
-        status.update(label=f"✅ Found {len(claims)} locations!", state="complete")
+    progress_bar.progress(30, text=f"Found {len(claims)} sites. Accessing Satellite Feed...")
 
-    # 3. Satellite Analysis
-    st.subheader("🌍 Satellite Verification Results")
-    
-    results_data = []
-    
-    # Create a progress bar
-    progress_bar = st.progress(0)
+    # C. SATELLITE PHASE
+    results = []
     
     for i, claim in enumerate(claims):
-        loc = claim['loc']
         bbox = claim['bbox']
         
-        # dynamic dates based on sidebar
-        date_before = f"{start_year}-01-01/{start_year}-01-30"
-        date_after = f"{end_year}-01-01/{end_year}-01-30"
+        # Format Dates
+        date_start = f"{start_year}-01-01/{start_year}-01-30"
+        date_end   = f"{end_year}-01-01/{end_year}-01-30"
         
-        # Call Satellite Agent
-        score_before, _ = sat_agent.get_ndvi(bbox, date_before)
-        score_after, _  = sat_agent.get_ndvi(bbox, date_after)
+        # Fetch Data
+        s1, _ = sat_agent.get_ndvi(bbox, date_start)
+        s2, _ = sat_agent.get_ndvi(bbox, date_end)
         
         # Calculate Logic
-        delta = 0
-        status = "Unknown"
-        if score_before and score_after:
-            delta = score_after - score_before
-            if delta > 0.05: status = "Positive ✅"
-            elif delta < -0.05: status = "Suspicious ⚠️"
-            else: status = "Neutral ⚖️"
-        else:
-            status = "Cloud Error ☁️"
-            score_before, score_after = 0, 0
-
-        results_data.append({
-            "Location": loc,
-            "Claim Snippet": claim['text'][:100] + "...",
-            f"NDVI {start_year}": round(score_before, 3),
-            f"NDVI {end_year}": round(score_after, 3),
+        v1 = s1 if s1 else 0
+        v2 = s2 if s2 else 0
+        delta = v2 - v1
+        
+        # Verdict Logic
+        sentiment = "NEUTRAL ⚖️"
+        if delta > 0.05: sentiment = "POSITIVE ✅"
+        elif delta < -0.05: sentiment = "SUSPICIOUS ⚠️"
+        
+        results.append({
+            "Location": claim['loc'],
+            "Lat": claim['coords'][0],
+            "Lon": claim['coords'][1],
+            "Baseline": round(v1, 3),
+            "Target": round(v2, 3),
             "Change": round(delta, 3),
-            "Verdict": status,
-            "lat": claim['coords'][0],
-            "lon": claim['coords'][1]
+            "Sentiment": sentiment,
+            "Claim": claim['text'][:80] + "..."
         })
         
-        # Update progress
-        progress_bar.progress((i + 1) / len(claims))
+        # Smooth Progress Bar
+        prog = 30 + int(((i+1) / len(claims)) * 70)
+        progress_bar.progress(prog, text=f"Auditing: {claim['loc']}")
 
-    # 4. Display Data
-    df = pd.DataFrame(results_data)
+    progress_bar.empty()
+    df = pd.DataFrame(results)
+
+    # --- D. DASHBOARD VISUALIZATION ---
     
-    # -- METRICS ROW --
-    m1, m2, m3 = st.columns(3)
-    suspicious_count = len(df[df["Verdict"].str.contains("Suspicious")])
+    # 1. STATISTICS ROW
+    st.markdown("### 📊 Mission Statistics")
+    m1, m2, m3, m4 = st.columns(4)
+    
+    verified = len(df[df['Sentiment'].str.contains("POSITIVE")])
+    suspicious = len(df[df['Sentiment'].str.contains("SUSPICIOUS")])
+    
     m1.metric("Locations Audited", len(df))
-    m2.metric("Suspicious Claims", suspicious_count, delta_color="inverse")
-    m3.metric("Data Reliability", "85%")
+    m2.metric("Verified Growth", verified)
+    m3.metric("Suspicious Drops", suspicious, delta_color="inverse")
+    m4.metric("Avg. Vegetation Change", f"{df['Change'].mean():.3f}")
+    
+    st.markdown("---")
 
-    # -- INTERACTIVE MAP --
-    st.map(df, latitude="lat", longitude="lon", zoom=2)
+    # 2. MAP & LIST COMPOSITE LAYOUT
+    col_map, col_list = st.columns([1.5, 1])
     
-    # -- DETAILED TABLE --
-    st.table(df[["Location", "NDVI 2022", "NDVI 2023", "Change", "Verdict"]])
-    
-    # -- DOWNLOAD REPORT --
+    with col_map:
+        st.subheader("🌍 Geospatial Verification")
+        # Visual Map
+        st.map(df, latitude="Lat", longitude="Lon", zoom=1, use_container_width=True)
+        
+    with col_list:
+        st.subheader("📝 Location Sentiments")
+        # Clean List View
+        st.dataframe(
+            df[["Location", "Change", "Sentiment"]],
+            use_container_width=True,
+            height=350,
+            column_config={
+                "Change": st.column_config.NumberColumn(
+                    "NDVI Delta",
+                    format="%.3f"
+                ),
+                "Sentiment": st.column_config.TextColumn(
+                    "Verdict",
+                    width="medium"
+                )
+            }
+        )
+
+    # 3. DOWNLOAD
     csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download Audit Report", csv, "sage_audit.csv", "text/csv")
+    st.download_button(
+        label="📥 Download Full Audit Report",
+        data=csv,
+        file_name="sage_audit_report.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
