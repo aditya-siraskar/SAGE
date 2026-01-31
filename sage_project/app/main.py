@@ -214,7 +214,57 @@ elif run_btn and uploaded_file:
             }
         )
 
-    # 3. DOWNLOAD
+    # 3. CHARTS SECTION
+    st.markdown("---")
+    st.subheader("📈 Deep Dive Analytics")
+    
+    chart1, chart2 = st.columns(2)
+    
+    with chart1:
+        # A. NDVI Comparison (Grouped Bar Chart)
+        # We need to melt the dataframe to make it suitable for a grouped bar chart
+        df_melted = df.melt(id_vars=["Location"], value_vars=["Baseline", "Target"], var_name="Year", value_name="NDVI")
+        
+        fig_bar = px.bar(
+            df_melted, 
+            x="Location", 
+            y="NDVI", 
+            color="Year", 
+            barmode="group",
+            title="Vegetation Index: Baseline vs Target",
+            color_discrete_sequence=["#94a3b8", "#4ade80"], # Grey (Old) -> Green (New)
+            height=400
+        )
+        fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="white")
+        st.plotly_chart(fig_bar, use_container_width=True)
+        
+    with chart2:
+        # B. Verdict Distribution (Donut Chart)
+        # Count values
+        verdict_counts = df["Sentiment"].value_counts().reset_index()
+        verdict_counts.columns = ["Verdict", "Count"]
+        
+        # Define colors mapping
+        color_map = {
+            "POSITIVE ✅": "#4ade80",
+            "SUSPICIOUS ⚠️": "#f87171",
+            "NEUTRAL ⚖️": "#94a3b8"
+        }
+        
+        fig_pie = px.pie(
+            verdict_counts, 
+            values="Count", 
+            names="Verdict",
+            title="Audit Verdict Distribution",
+            hole=0.4,
+            color="Verdict",
+            color_discrete_map=color_map,
+            height=400
+        )
+        fig_pie.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="white")
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    # 4. DOWNLOAD
     csv = df.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="📥 Download Full Audit Report",
