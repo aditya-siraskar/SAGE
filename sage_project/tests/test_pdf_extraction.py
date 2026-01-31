@@ -2,17 +2,16 @@ import sys
 import os
 
 # --- PATH FIX ---
-# This forces Python to look inside the current folder for modules
-# regardless of how you run the script.
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
+# Point to the PROJECT ROOT (2 levels up from tests/)
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(project_root)
 # ----------------
 
-from agent.skills.pdf_extractor.extract import PDFExtractor
+from sage_project.agent.skills.pdf_extractor.extract import PDFExtractor
 
 # Create path to our dummy file
-# Note: We use 'sage_project' in the path now
-pdf_path = os.path.join(current_dir, "data", "raw", "test_report.pdf")
+# We look in sage_project/data/raw
+pdf_path = os.path.join(project_root, "sage_project", "data", "raw", "test_report.pdf")
 
 def test_reader():
     print("--- TESTING PHASE 1: NLP READER ---")

@@ -4,8 +4,8 @@ import os
 # Ensure we can import from our local folders
 sys.path.append(os.getcwd())
 
-from agent.skills.pdf_extractor.extract import PDFExtractor
-from agent.skills.satellite_fetcher.fetch_logic import SatelliteFetcher
+from sage_project.agent.skills.pdf_extractor.extract import PDFExtractor
+from sage_project.agent.skills.satellite_fetcher.fetch_logic import SatelliteFetcher
 
 def run_sage_analysis(pdf_filename):
     print("\n" + "="*50)

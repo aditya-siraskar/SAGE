@@ -3,13 +3,15 @@ from reportlab.pdfgen import canvas
 import os
 
 # Ensure the directory exists
-output_dir = "data/raw"
+# Ensure the directory exists
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+output_dir = os.path.join(project_root, "sage_project", "data", "raw")
 os.makedirs(output_dir, exist_ok=True)
 
 filename = os.path.join(output_dir, "test_report.pdf")
 
 def create_pdf():
-    print(f"📄 Generating dummy PDF at: {filename}")
+    print(f"Generating dummy PDF at: {filename}")
     c = canvas.Canvas(filename)
     
     # Title
@@ -32,7 +34,7 @@ def create_pdf():
     c.drawString(100, 690, "4. Palm oil plantations in Sumatra were replanted with native species.")
 
     c.save()
-    print("✅ Dummy PDF created successfully!")
+    print("Dummy PDF created successfully!")
 
 if __name__ == "__main__":
     create_pdf()

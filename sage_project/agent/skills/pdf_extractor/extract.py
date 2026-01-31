@@ -5,7 +5,7 @@ from geopy.geocoders import Nominatim
 
 class PDFExtractor:
     def __init__(self):
-        print("✅ SUCCESS: Running V4 Logic (Expanded Entity Types)")
+        print("SUCCESS: Running V4 Logic (Expanded Entity Types)")
         self.nlp = spacy.load("en_core_web_sm")
         self.geolocator = Nominatim(user_agent="sage_project_student_final")
 
@@ -21,7 +21,7 @@ class PDFExtractor:
             reader = pypdf.PdfReader(path)
             return "\n".join([p.extract_text() for p in reader.pages[:5] if p.extract_text()])
         except Exception as e:
-            print(f"❌ Read Error: {e}")
+            print(f"Read Error: {e}")
             return ""
 
     def _find_locations(self, text):
@@ -51,7 +51,7 @@ class PDFExtractor:
 
     def _geocode_claims(self, claims):
         results = []
-        print(f"🌍 Geocoding {len(claims)} potential locations...")
+        print(f"Geocoding {len(claims)} potential locations...")
         for c in claims:
             try:
                 # Get coords
@@ -60,7 +60,7 @@ class PDFExtractor:
                     c["bbox"] = [loc.longitude - 0.05, loc.latitude - 0.05, loc.longitude + 0.05, loc.latitude + 0.05]
                     c["coords"] = (loc.latitude, loc.longitude)
                     results.append(c)
-                    print(f"     📍 Mapped '{c['loc']}' -> {c['coords']}")
+                    print(f"     Mapped '{c['loc']}' -> {c['coords']}")
             except:
                 continue
         return results
