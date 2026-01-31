@@ -19,7 +19,7 @@ class PDFExtractor:
     def _read_pdf(self, path):
         try:
             reader = pypdf.PdfReader(path)
-            return "\n".join([p.extract_text() for p in reader.pages[:5] if p.extract_text()])
+            return "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
         except Exception as e:
             print(f"Read Error: {e}")
             return ""
